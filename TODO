@@ -1,0 +1,2 @@
+test how many fork() can we create
+then create a fork for every core that runs bench() the to the avg of all scores
