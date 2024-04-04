@@ -28,7 +28,7 @@ char* parseScore(uint64_t score) {
     for (int i = original_len + num_spaces; i >= 0; i--) 
         if ( (original_len - i) % 3 == 0 && original_len - i != 0 ) {
             memmove(formatted_str + i + 1, formatted_str + i, strlen(formatted_str + i) + 1);
-            formatted_str[i] = ' ';
+            formatted_str[i] = '.';
         } 
 
     return formatted_str;	
@@ -43,7 +43,7 @@ uint64_t bench() {
 	for (uint32_t then = time(0); time(0) - then <= MAX_TIME; score++)
 		rand();
 	
-	return score / 1000;
+	return score / 10000;
 }
 
 
@@ -52,38 +52,35 @@ int main() {
 	pid_t pid;
 	int status;
 	
-	printf("%d\n", cores);
 
+	printf("wait %ds...\n", MAX_TIME);
 
-    // Creazione dei processi
-    for (int i = 0; i < 2; i++) {
+    for (int i = 0; i < cores; i++) {
         pid = fork();
         if (pid < 0) {
             puts("pid error.");
             exit(1);
-        } else if (pid == 0) {
-            // Codice da eseguire in ogni processo
-            printf("===============\npid: %d\n", getpid());
-            // Puoi inserire qui il codice per il test del core
-			
-			//printf("wait %ds...\n", MAX_TIME);
-
-			uint64_t sc = bench();
-			char* sh = parseScore(sc);
-
-			printf("[%d] score:%s\n", getpid(), sh);
-			
-			free(sh);
-
-			puts("=============");
+        } 
+		else if (pid == 0) {
+			bench();
             exit(0);
         }
     }
 
-    // Attendi la terminazione di tutti i processi
+	uint64_t score = bench();
+
+    // Wait all process to end
     while ((pid = wait(&status)) > 0);
+
+	char* sh = parseScore(score);
+
+	printf("score: %s\n", sh);
+
+	free(sh);	
+	
 
 	return 0;
 }
 
 // Compile this as: gcc -std=c99 mark.c -o mark
+//
