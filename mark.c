@@ -5,10 +5,7 @@
 #include <string.h>
 #include <inttypes.h>
 #include <unistd.h>
-#include <sys/sysinfo.h>
-
-// Testing
-#include <sys/wait.h>
+#include <pthread.h>
 
 //
 // This code only works in unix-like 
@@ -16,6 +13,12 @@
 
 #define MAX_TIME   7
 #define START_SEED 1000000000
+
+typedef struct {
+	pthread_t tid;
+	uint64_t score;
+} thData;
+
 
 char* parseScore(uint64_t score) {
     int num_digits = snprintf(NULL, 0, "%" PRIu64, score);
@@ -43,44 +46,48 @@ uint64_t bench() {
 	for (uint32_t then = time(0); time(0) - then <= MAX_TIME; score++)
 		rand();
 	
-	return score / 10000;
+	return score / 1000;
 }
 
 
+void* bench_th(void* ptr) {
+	thData* datas = (thData*)ptr;
+
+	//printf("[%ld] started...\n", datas->tid);
+	datas->score = bench();
+	//printf("[%ld] %lu\n", datas->tid, datas->score);
+}
+
 int main() {
-	uint8_t cores = sysconf(_SC_NPROCESSORS_ONLN);
-	pid_t pid;
-	int status;
-	
+	uint8_t cores    = sysconf(_SC_NPROCESSORS_ONLN);
+	thData* datas = malloc(sizeof(thData) * cores); 
+	if (!datas)
+		return 1;
 
 	printf("wait %ds...\n", MAX_TIME);
 
-    for (int i = 0; i < cores; i++) {
-        pid = fork();
-        if (pid < 0) {
-            puts("pid error.");
-            exit(1);
-        } 
-		else if (pid == 0) {
-			bench();
-            exit(0);
-        }
-    }
+	// start a thread for every core of this cpu
+	for (uint8_t i = 0; i < cores; i++) {
+		pthread_create(&datas[i].tid, NULL, bench_th, (void*)&datas[i]);
+	}    
 
-	uint64_t score = bench();
+	// wait all the threads to end
+	for (uint8_t i=0; i<cores; i++)
+		pthread_join(datas[i].tid, NULL);
 
-    // Wait all process to end
-    while ((pid = wait(&status)) > 0);
+// calculate the avg
+	uint64_t scoreAvg = 0;
+	for (uint8_t i = 0; i < cores; i++)
+		scoreAvg += datas[i].score;
+	scoreAvg /= cores;
 
-	char* sh = parseScore(score);
-
+	char* sh = parseScore(scoreAvg);
 	printf("score: %s\n", sh);
 
+	// free the allocated
 	free(sh);	
-	
+	free(datas);	
 
 	return 0;
 }
 
-// Compile this as: gcc -std=c99 mark.c -o mark
-//
