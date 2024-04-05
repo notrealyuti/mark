@@ -76,13 +76,12 @@ int main() {
 		pthread_join(datas[i].tid, NULL);
 
 // calculate the avg
-	uint64_t scoreAvg = 0;
+	uint64_t score = 0;
 	for (uint8_t i = 0; i < cores; i++)
-		scoreAvg += datas[i].score;
-	scoreAvg /= cores;
+		score += datas[i].score;
 
-	char* sh = parseScore(scoreAvg);
-	printf("score: %s\n", sh);
+	char* sh = parseScore(score);
+	printf("score: %lu\n", score);
 
 	// free the allocated
 	free(sh);	
