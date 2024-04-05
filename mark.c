@@ -11,15 +11,19 @@
 // This code only works in unix-like 
 //
 
+// time of benchmark default: 7
 #define MAX_TIME   7
+// Start seed of srand
 #define START_SEED 1000000000
 
+// used for the benchmark thread
 typedef struct {
 	pthread_t tid;
 	uint64_t score;
 } thData;
 
 
+// take a number and put a . every 3 digit from right
 char* parseScore(uint64_t score) {
     int num_digits = snprintf(NULL, 0, "%" PRIu64, score);
     int num_spaces = (num_digits - 1) / 3; 
@@ -38,18 +42,18 @@ char* parseScore(uint64_t score) {
 }
 
 
-
+// gives a score on the benchamrk done
 uint64_t bench() {
 	srand(START_SEED);
-	uint64_t score = 0;	
+	register uint64_t score = 0;	
 	
-	for (uint32_t then = time(0); time(0) - then <= MAX_TIME; score++)
+	for (register uint32_t then = time(0); time(0) - then <= MAX_TIME; score++)
 		rand();
 	
-	return score / 1000;
+	return score / 10000;
 }
 
-
+// func() to call as a thread
 void* bench_th(void* ptr) {
 	thData* datas = (thData*)ptr;
 
@@ -58,11 +62,18 @@ void* bench_th(void* ptr) {
 	//printf("[%ld] %lu\n", datas->tid, datas->score);
 }
 
+
 int main() {
-	uint8_t cores    = sysconf(_SC_NPROCESSORS_ONLN);
+	// get the corese number
+	uint8_t cores = sysconf(_SC_NPROCESSORS_ONLN);
+	
+	// allocate an array of thData to share the scores
+	// with all the thread function
 	thData* datas = malloc(sizeof(thData) * cores); 
-	if (!datas)
+	if (!datas) {
+		printf("datas allocate error");
 		return 1;
+	}	
 
 	printf("wait %ds...\n", MAX_TIME);
 
@@ -75,13 +86,14 @@ int main() {
 	for (uint8_t i=0; i<cores; i++)
 		pthread_join(datas[i].tid, NULL);
 
-// calculate the avg
+// sum all scores
 	uint64_t score = 0;
 	for (uint8_t i = 0; i < cores; i++)
 		score += datas[i].score;
 
+	// convert in a string with a . every 3 digits
 	char* sh = parseScore(score);
-	printf("score: %lu\n", score);
+	printf("score: %s\n", sh);
 
 	// free the allocated
 	free(sh);	
