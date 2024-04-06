@@ -13,8 +13,11 @@
 
 // time of benchmark default: 7
 #define MAX_TIME   7
+// Sleep time btw the 2 benchmarks
+#define SLEEP_TIME 3
 // Start seed of srand
 #define START_SEED 1000000000
+
 
 // used for the benchmark thread
 typedef struct {
@@ -66,7 +69,9 @@ void* bench_th(void* ptr) {
 int main() {
 	// get the corese number
 	uint8_t cores = sysconf(_SC_NPROCESSORS_ONLN);
-	
+	uint64_t multiScore  = 0;
+	uint64_t singleScore = 0;
+
 	// allocate an array of thData to share the scores
 	// with all the thread function
 	thData* datas = malloc(sizeof(thData) * cores); 
@@ -75,29 +80,46 @@ int main() {
 		return 1;
 	}	
 
-	printf("wait %ds...\n", MAX_TIME);
+	printf("running... wait %ds\n", MAX_TIME*2 + SLEEP_TIME);
 
+//
+// SINGLE CORE BENCHMARK
+//
+	singleScore = bench();
+
+	// sleep btw 2 benchs
+	sleep(SLEEP_TIME);
+
+//
+// MULTI CORE BENCHMARK
+//
 	// start a thread for every core of this cpu
-	for (uint8_t i = 0; i < cores; i++) {
+	for (uint8_t i = 0; i < cores; i++) 
 		pthread_create(&datas[i].tid, NULL, bench_th, (void*)&datas[i]);
-	}    
 
 	// wait all the threads to end
 	for (uint8_t i=0; i<cores; i++)
 		pthread_join(datas[i].tid, NULL);
 
 // sum all scores
-	uint64_t score = 0;
 	for (uint8_t i = 0; i < cores; i++)
-		score += datas[i].score;
+		multiScore += datas[i].score;
 
-	// convert in a string with a . every 3 digits
-	char* sh = parseScore(score);
-	printf("score: %s\n", sh);
+	// free the allocated struct to get scores from all threads
+	free(datas);  
 
-	// free the allocated
-	free(sh);	
-	free(datas);	
+
+
+// print single core and multi core score
+
+	char* tmp = parseScore(singleScore);
+	printf("\nsingle core: %s\n", tmp);
+	free(tmp);
+
+	tmp = parseScore(multiScore);
+	printf("multi  core: %s\n", tmp);
+	free(tmp);
+
 
 	return 0;
 }
