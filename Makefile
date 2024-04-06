@@ -1,2 +1,2 @@
 build:
-	gcc -std=c99 mark.c -o mark -lpthread
+	gcc -std=c99 mark.c -o mark 
