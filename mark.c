@@ -11,16 +11,19 @@
 
 
 //
-// This code only works in unix-like 
+// this code only works in unix-like 
 //
 // author: yuti
 
 // time of benchmark default: 7
 #define MAX_TIME   7
-// Sleep time btw the 2 benchmarks
+
+// sleep time btw the 2 benchmarks
 #define SLEEP_TIME 3
+
 // how much the score is divided
 #define DIV_SCORE 100000
+
 // Start seed of srand
 #define START_SEED 1000000000
 
@@ -38,7 +41,6 @@ typedef int8_t  s8;
 typedef int16_t s16;
 typedef int32_t s32;
 typedef int64_t s64;
-
 
 
 
@@ -73,6 +75,14 @@ char* parseScore(u64 score) {
     return formatted_str;	
 }
 
+void removeSubstr (char *string, char *sub) {
+    char *match;
+    int len = strlen(sub);
+    while ((match = strstr(string, sub))) {
+        *match = '\0';
+        strcat(string, match+len);
+    }
+}
 
 // gives a score on the benchamrk done (the important func in this program)
 u64 bench() {
@@ -85,16 +95,39 @@ u64 bench() {
 	return score / DIV_SCORE;
 }
 
+void getCPUinfos(char* output, u16 size) {
+	FILE* cmd = popen("cat /proc/cpuinfo", "r");
+	if (!cmd)
+		return;
+
+
+	while(fgets(output, size, cmd) != NULL) {
+		char* p = strstr(output, "model name");
+		if (p != NULL) {
+			//printf("model name found!\n");
+			//printf("%s\n", output);
+			removeSubstr(output, "model name	: ");
+			break;
+		}
+		output[0] = '\0';
+	}
+}
+
+
+
 int main() {
 	// get the cores number
 	u16 cores = sysconf(_SC_NPROCESSORS_ONLN);
+	u32 freq  = sysconf(_SC_CLK_TCK);
 	u64 singleScore = 0;
 	u64 multiScore  = 0;
 	pid_t pid;
     int status;
+	char infos[100];
 
 
-	// create a shared memory for an array of chDatas 
+
+	// create a shared memory for an array of chDatas i
 	// this array will contain all scores from all process
 	// so needs to be shared
 	int shmid = shmget(IPC_PRIVATE, sizeof(chData) * cores, IPC_CREAT | 0666);
@@ -162,15 +195,17 @@ int main() {
 
 
 // print results
+	getCPUinfos(infos, sizeof(infos));
+	printf("\n%s", infos);
+
 
 	char* tmp = parseScore(singleScore);
-	printf("\nsingle-core: %s\n", tmp);
+	printf("single-core: %s\n", tmp);
 	free(tmp);
 
 	tmp = parseScore(multiScore);
-	printf("multi-core:  %s\n", tmp);
+	printf("multi-core:  %s | cores: %u\n", tmp, cores);
 	free(tmp);
-
 
 	return 0;
 }

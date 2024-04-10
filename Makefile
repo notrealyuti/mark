@@ -1,2 +1,2 @@
 build:
-	gcc -std=c99 mark.c -o mark 
+	gcc -std=gnu99 mark.c -o mark 
